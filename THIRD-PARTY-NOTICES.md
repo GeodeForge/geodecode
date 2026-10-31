@@ -12,6 +12,13 @@ rule pack), evaluated by GeodeCode's own engine. No Gitleaks source code is incl
 executed. Rules that use RE2 constructs JavaScript cannot express are not shipped (see the core spec
 §6 and `bench/build-rulepack.mjs`).
 
+**210 of the 221 upstream rules ship.** The 11 left out use scoped flag negation `(?-i:...)`, which
+JavaScript regex cannot express. A further **26 are "hoisted"**: an inline `(?i)` was moved to a
+whole-pattern flag, because JavaScript has no scoped flags. **That widens those rules**: text before the
+original flag becomes case-insensitive too. Each hoisted rule is marked `hoisted: true` in the pack so the
+widening is visible rather than silent, and the whole set was checked for false alarms against a separate
+collection of documents before shipping.
+
 Gitleaks is distributed under the MIT License:
 
 ```
