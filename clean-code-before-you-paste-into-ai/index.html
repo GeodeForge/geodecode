@@ -57,6 +57,7 @@ nav a:hover{color:var(--ink)}
 .kicker{font-style:italic;color:var(--way);margin:6px 0 0}
 .mission{color:var(--way);font-style:italic;margin:0 0 14px}
 label.field{display:block;font-weight:600;font-size:13px;margin:0 0 5px;color:#fff}
+.vh{position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
 .hint{color:var(--muted);font-size:13px;margin:0 0 8px}
 textarea{width:100%;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);padding:10px 12px;font-family:var(--mono);font-size:12.5px;line-height:1.5;resize:vertical}
 textarea:focus{outline:none;border-color:var(--ink)}
@@ -161,16 +162,16 @@ footer a{color:var(--muted)}
         <div class="row">
           <button class="primary" id="process">Process</button>
           <button id="clear">Clear</button>
-          <span class="stat" id="removedStat"></span>
+          <span class="stat" id="removedStat" role="status"></span>
         </div>
-        <div id="errbanner"></div>
+        <div id="errbanner" role="alert"></div>
       </div>
 
       <div class="pane">
         <label class="field" for="output">Cleaned output</label>
         <p class="hint">Deny-listed strings replaced with labelled placeholders.</p>
         <textarea id="output" spellcheck="false" readonly placeholder="processed text appears here…"></textarea>
-        <div class="row"><button id="copyout">Copy output</button><span class="stat" id="copystat"></span></div>
+        <div class="row"><button id="copyout">Copy output</button><span class="stat" id="copystat" role="status"></span></div>
 
         <div class="distill" id="distillWrap" style="display:none">
           <label>
@@ -185,8 +186,9 @@ footer a{color:var(--muted)}
         <div class="receipt" id="receiptPanel" style="display:none"></div>
         <details id="receiptRaw">
           <summary>The checkable receipt (JSON)</summary>
+          <label class="vh" for="receipt">Receipt (JSON)</label>
           <textarea id="receipt" spellcheck="false" readonly placeholder="process something to generate a receipt…"></textarea>
-          <div class="row"><button class="mini" id="copyreceipt">Copy receipt</button><span class="stat" id="rcptstat"></span></div>
+          <div class="row"><button class="mini" id="copyreceipt">Copy receipt</button><span class="stat" id="rcptstat" role="status"></span></div>
         </details>
       </div>
     </div>
@@ -218,8 +220,10 @@ footer a{color:var(--muted)}
     <details id="rtD">
       <summary>Round-trip — restore your originals</summary>
       <p class="hint">Paste the reply you got back; every placeholder swaps back to the original, in your browser.</p>
+      <label class="vh" for="reply">The reply you got back</label>
       <textarea id="reply" spellcheck="false" placeholder="paste the reply, with GEODE_… tokens, here…"></textarea>
       <div class="row"><button id="unmap">Restore</button></div>
+      <label class="vh" for="restored">Your text, restored</label>
       <textarea id="restored" spellcheck="false" readonly placeholder="restored text appears here…"></textarea>
     </details>
   </div>
@@ -227,8 +231,9 @@ footer a{color:var(--muted)}
   <section id="verify">
     <h2>Verify any text against the ruleset</h2>
     <p class="hint">The same scan the receipt runs, on its own. Paste anything and see what the ruleset still finds — zero means it flags nothing in that text, a floor, not a guarantee. Shown against your own text, never a scoreboard about anyone else.</p>
+    <label class="vh" for="verifyInput">Text to scan</label>
     <textarea id="verifyInput" spellcheck="false" placeholder="paste any text to scan…"></textarea>
-    <div class="row"><button id="verifyBtn">Scan</button><span class="stat" id="verifyStat"></span></div>
+    <div class="row"><button id="verifyBtn">Scan</button><span class="stat" id="verifyStat" role="status"></span></div>
     <div class="pane" id="verifyWrap" style="display:none;margin-top:10px">
       <table id="verifyTable"><thead><tr><th>Line</th><th>Kind</th><th>Tier</th><th>Matched text (stays on this device)</th></tr></thead><tbody id="verifyBody"></tbody></table>
     </div>
