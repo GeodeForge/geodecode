@@ -9,8 +9,7 @@ material it builds on.
 GeodeCode's rule pack is **derived from the regular-expression signatures** published by the Gitleaks
 project — https://github.com/gitleaks/gitleaks. The patterns are used **as data** (a versioned JSON
 rule pack), evaluated by GeodeCode's own engine. No Gitleaks source code is included, linked, or
-executed. Rules that use RE2 constructs JavaScript cannot express are not shipped (see the core spec
-§6 and `bench/build-rulepack.mjs`).
+executed. Rules that use RE2 constructs JavaScript cannot express are not shipped.
 
 **210 of the 221 upstream rules ship.** The 11 left out use scoped flag negation `(?-i:...)`, which
 JavaScript regex cannot express. A further **26 are "hoisted"**: an inline `(?i)` was moved to a

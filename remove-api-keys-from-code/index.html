@@ -57,6 +57,10 @@ nav a:hover{color:var(--ink)}
 .kicker{font-style:italic;color:var(--way);margin:6px 0 0}
 .mission{color:var(--way);font-style:italic;margin:0 0 14px}
 label.field{display:block;font-weight:600;font-size:13px;margin:0 0 5px;color:#fff}
+.pick{display:inline-block;border:1px solid var(--line);background:var(--btn);border-color:var(--btn);color:#fff;border-radius:9px;padding:9px 14px;cursor:pointer}
+.pick:focus-within{outline:2px solid var(--ink);outline-offset:2px}
+#folder label.opt{display:inline-flex;gap:7px;align-items:center;font-size:13.5px;color:var(--muted);cursor:pointer}
+#folderNotes{margin:10px 0 0;padding-left:18px;color:var(--muted);font-size:13px}
 .vh{position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
 .hint{color:var(--muted);font-size:13px;margin:0 0 8px}
 textarea{width:100%;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);padding:10px 12px;font-family:var(--mono);font-size:12.5px;line-height:1.5;resize:vertical}
@@ -144,7 +148,7 @@ footer a{color:var(--muted)}
 <main id="top">
   <section class="hero">
     <h2>Clean code and text before you paste it.</h2>
-    <p class="sub">Strips what you list and proves it, all in your browser. Flags what else looks sensitive. Your text never leaves this device, and nothing is stored.</p>
+    <p class="sub">Strips what you list and proves it, all in your browser. Flags what else looks sensitive, in pasted text or across a whole folder. Nothing leaves this device, and nothing is stored.</p>
     <p class="mission">We don&rsquo;t tell you the result is safe. We make it small enough that you can tell.</p>
 
     <noscript>
@@ -237,6 +241,34 @@ footer a{color:var(--muted)}
     <div class="pane" id="verifyWrap" style="display:none;margin-top:10px">
       <table id="verifyTable"><thead><tr><th>Line</th><th>Kind</th><th>Tier</th><th>Matched text (stays on this device)</th></tr></thead><tbody id="verifyBody"></tbody></table>
     </div>
+  </section>
+
+  <section id="folder">
+    <h2>Scan a whole folder</h2>
+    <p class="hint">Pick a folder and GeodeCode reads every file in it, here in your browser, and lists each line that looks like a key, token, password or other secret. Your browser may say it will &ldquo;upload&rdquo; the files: that is its standard wording for letting this page read them. This page cannot send anything anywhere, so nothing leaves your device.</p>
+    <div class="row">
+      <label class="pick">Choose a folder<input type="file" id="folderInput" class="vh" webkitdirectory multiple></label>
+      <label class="opt"><input type="checkbox" id="folderDeps"> Also read .git and node_modules</label>
+      <label class="opt"><input type="checkbox" id="folderShow"> Show what matched in full</label>
+    </div>
+    <div class="row"><span class="stat" id="folderStat" role="status"></span></div>
+    <div class="pane" id="folderWrap" style="display:none;margin-top:10px">
+      <table id="folderTable"><thead><tr><th>File</th><th>Line</th><th>Kind</th><th>Matched text (stays on this device)</th></tr></thead><tbody id="folderBody"></tbody></table>
+      <ul id="folderNotes"></ul>
+    </div>
+    <details id="folderReportD" style="display:none">
+      <summary>The report as text, to save or share</summary>
+      <label class="vh" for="folderReport">Folder scan report</label>
+      <textarea id="folderReport" spellcheck="false" readonly rows="10"></textarea>
+      <div class="row"><button class="mini" id="folderCopy">Copy report</button><span class="stat" id="folderCopyStat" role="status"></span></div>
+    </details>
+    <details id="folderReceiptD" style="display:none">
+      <summary>Receipt: counts only, no file names, no lines, no values</summary>
+      <label class="vh" for="folderReceipt">Folder scan receipt</label>
+      <textarea id="folderReceipt" spellcheck="false" readonly rows="10"></textarea>
+      <div class="row"><button class="mini" id="folderReceiptCopy">Copy receipt</button><span class="stat" id="folderReceiptStat" role="status"></span></div>
+    </details>
+    <p class="hint" style="margin-top:12px">Binary files (images, archives, compiled code) are listed but not read. For a check before you publish code, the same scan runs from the command line and fails when it finds something: get <code>scan-folder.mjs</code> from <a href="https://github.com/GeodeForge/geodecode">GeodeCode on GitHub</a> and run <code>node scan-folder.mjs your-folder</code>.</p>
   </section>
 
   <section id="limits">
@@ -420,9 +452,6 @@ footer a{color:var(--muted)}
   var IP=/\b(?:\d{1,3}\.){3}\d{1,3}\b/, IP_CTX=["ip","host","server","addr","bind","listen"];
   var KV=/[A-Za-z0-9_.\-]*(?:secret|token|passwd|password|api[_-]?key|access[_-]?key|secret[_-]?key|private[_-]?key|client[_-]?secret|auth[_-]?token|credential|passphrase)(?![a-z])[A-Za-z0-9_.\-]*['"]?\s*[:=]\s*['"]?([^\s'"`,;]{8,})/i;
 
-  // PL-732: every public entry point receives server input now, not a textarea.
-  // Coerce rather than throw: a thrown error in a proxy is a fail-OPEN risk.
-  // Primitives stringify (a number in a JSON field still gets scanned); null/undefined become "".
   function asText(v){
     if(typeof v==="string") return v;
     if(v===null || v===undefined) return "";
@@ -433,13 +462,6 @@ footer a{color:var(--muted)}
 
   function some(arr,fn){ for(var i=0;i<arr.length;i++){ if(fn(arr[i])) return true; } return false; }
 
-  // PL-735: a context word was matched as a bare SUBSTRING, so "ip" fired inside "pip",
-  // "description", "multiple" and "script" - which made the address rule report version
-  // numbers as IP addresses. Caught on the second population (.corpus-b): 17 of 216
-  // detections were version strings in third-party package documentation.
-  // A context word now needs a word boundary at its START, which still allows the natural
-  // suffixes ("ip" matches "ipv4", "host" matches "hostname", "addr" matches "address")
-  // while refusing a match inside an unrelated word.
   var CTX_CACHE={};
   function ctxRe(words){
     var k=words.join("|");
@@ -448,20 +470,6 @@ footer a{color:var(--muted)}
   }
   function hasContext(low, words){ return ctxRe(words).test(low); }
 
-  // PL-735 (2026-10-30): THE SCAN CAP IS GONE, AND NOTHING IS SKIPPED ANY MORE.
-  // It was introduced as belt-and-braces alongside three real fixes, and it was the wrong kind
-  // of answer: it bought speed by not looking, and told the user so on the receipt. The owner
-  // pushed back — a limit is a shortfall of what was built, not a thing to disclose and move on
-  // from — and he was right. The actual causes were found and repaired instead:
-  //   1. two IMPORTED rules nested bounded quantifiers over the same class (30ms per 4KB window
-  //      each); the converter now collapses that nesting, proven equivalent before enabling.
-  //   2. the KV rule's unbounded greedy quantifiers backtracked over everything after a trigger
-  //      word (64KB = 5,297ms); it now runs on a window around each trigger.
-  //   3. the imported rulepack already runs windowed, for the same reason.
-  // With those three repaired, a 1MB single line scans in tens of milliseconds and EVERY line
-  // is scanned in full. MAX_SCAN_LINE stays only as a last-resort ceiling far above any real
-  // input, so a future pathological rule degrades instead of hanging; it is not expected to
-  // fire, and if it ever does the receipt still says so.
   var MAX_SCAN_LINE = 4 * 1024 * 1024;
   var KV_TRIGGERS = ["secret","token","passwd","password","api_key","apikey","api-key",
     "access_key","accesskey","access-key","secret_key","secretkey","secret-key",
@@ -472,15 +480,6 @@ footer a{color:var(--muted)}
     return false;
   }
 
-  // ---- RULEPACK (gitleaks-derived, converted by bench/build-rulepack.mjs) ----
-  // 210 of 221 upstream rules. 11 skipped: they use scoped flag negation (?-i:...)
-  // which JavaScript regex cannot express at all. 26 are "hoisted" — an inline (?i)
-  // was moved to a whole-pattern flag, which WIDENS them, so those are marked and
-  // fixture-tested. Upstream is MIT; see THIRD-PARTY-NOTICES.md.
-  //
-  // Every rule carries keywords. A rule's regex runs ONLY when one of its keywords is
-  // present in the line, found by a single combined pass — so 210 patterns cost about
-  // one scan per line, not 210. Same discipline as the email "@" precheck above.
   var RULEPACK = [
 {"id":"1password-secret-key","re":"\\bA3-[A-Z0-9]{6}-(?:(?:[A-Z0-9]{11})|(?:[A-Z0-9]{6}-[A-Z0-9]{5}))-[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{5}\\b","fl":"","kw":["a3-"],"lb":"PW","ho":false,"co":false},
 {"id":"1password-service-account-token","re":"ops_eyJ[a-zA-Z0-9+/]{250,}={0,3}","fl":"","kw":["ops_"],"lb":"PW","ho":false,"co":false},
@@ -785,24 +784,15 @@ footer a{color:var(--muted)}
         return {tier:"T1", category:TIER1[i].name, label:TIER1[i].label, value:m[0]};
       }
     }
-    // PL-733: the email pattern's local-part class includes "." so a long dotted run
-    // (an IP list, a version string, a minified bundle) backtracks quadratically before
-    // failing. An email REQUIRES "@", and indexOf is linear — so this precheck is exact,
-    // loses nothing, and removes the worst measured case (8k line: 206ms -> 0ms).
     if(low.indexOf("@")>=0 && !tooLong){
       m=EMAIL.exec(line);
       if(m && validTld(m[2]) && !PLACEHOLDER.test(m[0])) return {tier:"T2", category:"email", label:"EMAIL", value:m[0]};
     }
-    // the imported rulepack runs after the curated rules, which keep priority because
-    // they carry allowlists (e.g. AWS's documented example key) the import does not.
     if(!tooLong){
       var rp = rulepackMatch(line, low, allowed);
       if(rp) return rp;
     }
 
-    // PL-733: these three are CONTEXT-GATED — the match is discarded unless a context word
-    // is present, so testing context FIRST is identical in result and skips the regex.
-    // The IP pattern was quadratic in line length (measured: 32k line = 3706ms).
     if(hasContext(low, SSN_CTX)){
       m=SSN.exec(line);
       if(m) return {tier:"T2", category:"ssn", label:"SSN", value:m[0]};
@@ -815,12 +805,6 @@ footer a{color:var(--muted)}
       m=IP.exec(line);
       if(m) return {tier:"T2", category:"ipv4", label:"IP", value:m[0]};
     }
-    // PL-735: the KV rule carries unbounded greedy quantifiers either side of its alternation,
-    // so on a line that CONTAINS a trigger word it backtracked quadratically over everything
-    // after it (measured: 4KB 17ms, 16KB 378ms, 64KB 5,297ms). The trigger word tells us where
-    // a match can begin, so the rule now runs on a window around each trigger rather than on
-    // the whole line — the same treatment the imported rulepack already gets. Exact: the
-    // pattern cannot match further from its own trigger than the window is wide.
     m = kvMatchWindowed(line, low);
     if(m){
       var val=m[1];
@@ -831,13 +815,28 @@ footer a{color:var(--muted)}
     return null;
   }
 
+  var MAX_PER_LINE = 10000;
+  function classifyAll(line){
+    var cur=asText(line), found=[], r, at, n=0, pad;
+    while(n++ < MAX_PER_LINE && (r=classifyLine(cur))){
+      at = r.value ? cur.indexOf(r.value) : -1;
+      if(at < 0){ found.push({at:found.length ? found[found.length-1].at : 0, r:r}); break; }
+      found.push({at:at, r:r});
+      pad = new Array(r.value.length+1).join(" ");
+      cur = cur.slice(0, at) + pad + cur.slice(at + r.value.length);
+    }
+    found.sort(function(a,b){ return a.at-b.at; });
+    return found.map(function(f){ return f.r; });
+  }
+
   function scan(text){
-    var lines=asText(text).split(/\r?\n/), out=[], i, r;
-    for(i=0;i<lines.length;i++){ r=classifyLine(lines[i]); if(r){ r.line=i+1; out.push(r); } }
+    var lines=asText(text).split(/\r?\n/), out=[], i, j, all;
+    for(i=0;i<lines.length;i++){
+      all=classifyAll(lines[i]);
+      for(j=0;j<all.length;j++){ all[j].line=i+1; out.push(all[j]); }
+    }
     return out;
   }
-  // PL-733: which lines were too long to scan with the expensive rules. A limit the user
-  // is not told about is a false clean, so this is reported, never swallowed.
   function unscannedLines(text){
     var lines=asText(text).split(/\r?\n/), out=[], i;
     for(i=0;i<lines.length;i++){ if(lines[i].length > MAX_SCAN_LINE) out.push({line:i+1, length:lines[i].length}); }
@@ -868,22 +867,12 @@ footer a{color:var(--muted)}
       while(text.indexOf(token)>=0 || out.indexOf(token)>=0){ counters[comp]++; token="GEODE_"+comp+"_"+counters[comp]; }
       map.push({token:token, value:o.v, label:labelOfLiteral(o.v), count:0});
     });
-    // PL-734: COUNT WHAT WAS ACTUALLY REPLACED, NEVER WHAT WAS PLANNED.
-    // Replacement is longest-value-first, so a shorter entry that overlaps a longer one may
-    // have fewer occurrences left by the time its turn comes — or none at all. Counting
-    // occurrences in the ORIGINAL text reports removals that never happened, which is the
-    // one thing a receipt in this product may never do. Each count is therefore measured
-    // from the replacement itself.
     map.slice().sort(function(a,b){ return b.value.length-a.value.length; })
        .forEach(function(e){
          var parts=out.split(e.value);
          e.count = parts.length-1;
          out = parts.join(e.token);
        });
-    // An entry whose count is 0 was entirely contained inside a longer entry that was
-    // replaced first. The value IS gone — say which entry took it, rather than reporting a
-    // bare 0 that reads like a failure. If it is somehow still present, that is a LEAK and
-    // is marked as such rather than left for the reader to notice.
     map.forEach(function(e){
       if(e.count===0){
         if(out.indexOf(e.value)>=0){ e.leaked=true; }
@@ -1050,10 +1039,6 @@ footer a{color:var(--muted)}
           : residualMatches+" residual candidate(s) the ruleset still flags; promote them to the deny-list and re-process to reach 0" },
       proves:"what was removed + which tool & ruleset did it — NOT when (no trusted time source)"
     };
-    // PL-733: a line too long to scan with the expensive rules is a line we did NOT fully
-    // check. Reporting "0 residual matches" while silently skipping lines would be a false
-    // clean — the one failure this receipt exists to prevent. Present ONLY when it bit, so
-    // an ordinary receipt is unchanged.
     var skipped = unscannedLines(input);
     if(skipped.length){
       receipt.scan_limits = {
@@ -1075,6 +1060,144 @@ footer a{color:var(--muted)}
     unscannedLines:unscannedLines, MAX_SCAN_LINE:MAX_SCAN_LINE };
   globalThis.GEODECODE_ENGINE = API;
   if(typeof module!=="undefined" && module.exports){ module.exports=API; }
+})();
+
+</script>
+<script id="folderscan">
+(function(){
+  "use strict";
+
+  var DEFAULTS = {
+    sniffBytes: 8000,
+    maxBytes: 50 * 1024 * 1024,
+    skipDirs: [".git", "node_modules"]
+  };
+
+  function opt(o, k){ return (o && o[k] !== undefined && o[k] !== null) ? o[k] : DEFAULTS[k]; }
+
+  function normPath(p){ return String(p || "").replace(/\\/g, "/").replace(/^\.\//, "").replace(/^\/+/, ""); }
+
+  function skippedDirOf(path, o){
+    var dirs = opt(o, "skipDirs"), parts = normPath(path).split("/"), i;
+    parts.pop();
+    for(i = 0; i < parts.length; i++){ if(dirs.indexOf(parts[i]) >= 0) return parts[i]; }
+    return "";
+  }
+
+  function isBinary(bytes, o){
+    var n = Math.min(bytes.length, opt(o, "sniffBytes")), i;
+    for(i = 0; i < n; i++){ if(bytes[i] === 0) return true; }
+    return false;
+  }
+
+  function decode(bytes){
+    var t = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+    return t.charCodeAt(0) === 0xFEFF ? t.slice(1) : t;
+  }
+
+  function maskValue(v){
+    v = String(v);
+    if(v.length <= 8) return v.charAt(0) + "… (" + v.length + " characters)";
+    return v.slice(0, 4) + "… (" + v.length + " characters)";
+  }
+
+  function newReport(engine, o){
+    return {
+      engine: engine,
+      options: { sniffBytes: opt(o, "sniffBytes"), maxBytes: opt(o, "maxBytes"), skipDirs: opt(o, "skipDirs").slice() },
+      filesSeen: 0, filesRead: 0,
+      notRead: { binary: [], tooLarge: [], skippedDir: {}, unreadable: [], links: [] },
+      findings: [], longLines: [], digests: []
+    };
+  }
+
+  function addFile(rep, path, bytes, reason, size, digest){
+    var p = normPath(path), sd = skippedDirOf(p, rep.options), E = rep.engine, text, hits, i, long;
+    rep.filesSeen++;
+    if(sd){ rep.notRead.skippedDir[sd] = (rep.notRead.skippedDir[sd] || 0) + 1; return; }
+    if(reason === "unreadable"){ rep.notRead.unreadable.push(p); return; }
+    if(reason === "link"){ rep.notRead.links.push(p); return; }
+    if(reason === "tooLarge" || (bytes && bytes.length > rep.options.maxBytes)){
+      rep.notRead.tooLarge.push({ path: p, bytes: bytes ? bytes.length : (size || 0) }); return;
+    }
+    if(!bytes){ rep.notRead.unreadable.push(p); return; }
+    if(isBinary(bytes, rep.options)){ rep.notRead.binary.push(p); return; }
+    text = decode(bytes);
+    rep.filesRead++;
+    if(digest) rep.digests.push(E.sha256hex(p) + " " + digest); else rep.noDigest = true;
+    hits = E.scan(text);
+    for(i = 0; i < hits.length; i++){
+      rep.findings.push({ path: p, line: hits[i].line, label: hits[i].label, category: hits[i].category, tier: hits[i].tier, value: hits[i].value });
+    }
+    long = E.unscannedLines(text);
+    for(i = 0; i < long.length; i++) rep.longLines.push({ path: p, line: long[i].line, length: long[i].length });
+  }
+
+  function byPathLine(a, b){ return a.path < b.path ? -1 : a.path > b.path ? 1 : a.line - b.line; }
+
+  function finish(rep){
+    rep.findings.sort(byPathLine);
+    rep.longLines.sort(byPathLine);
+    rep.notRead.binary.sort(); rep.notRead.unreadable.sort(); rep.notRead.links.sort();
+    rep.notRead.tooLarge.sort(function(a, b){ return a.path < b.path ? -1 : 1; });
+    var files = {}, i;
+    for(i = 0; i < rep.findings.length; i++) files[rep.findings[i].path] = 1;
+    rep.filesWithFindings = Object.keys(files).length;
+    rep.clean = rep.findings.length === 0;
+    return rep;
+  }
+
+  function countSkippedDirs(rep){
+    var n = 0, k; for(k in rep.notRead.skippedDir) n += rep.notRead.skippedDir[k]; return n;
+  }
+
+  function formatReport(rep, o){
+    var show = o && o.showValues, out = [], i, f, k, nr = rep.notRead, skipped = countSkippedDirs(rep);
+    out.push("GeodeCode folder scan" + (o && o.title ? " of " + o.title : ""));
+    out.push("Files read: " + rep.filesRead + " of " + rep.filesSeen + " found.");
+    if(rep.clean) out.push("Nothing found. The rules flag nothing in the files that were read.");
+    else out.push("Found " + rep.findings.length + " thing" + (rep.findings.length === 1 ? "" : "s") + " in " + rep.filesWithFindings + " file" + (rep.filesWithFindings === 1 ? "" : "s") + ":");
+    for(i = 0; i < rep.findings.length; i++){
+      f = rep.findings[i];
+      out.push("  " + f.path + ", line " + f.line + ": " + f.label + "  " + (show ? f.value : maskValue(f.value)));
+    }
+    if(rep.longLines.length){
+      out.push("Lines too long for the pattern rules (" + rep.longLines.length + "). Check these by hand:");
+      for(i = 0; i < rep.longLines.length; i++) out.push("  " + rep.longLines[i].path + ", line " + rep.longLines[i].line);
+    }
+    if(nr.binary.length) out.push("Not read, binary (" + nr.binary.length + "): " + nr.binary.slice(0, 20).join(", ") + (nr.binary.length > 20 ? ", and " + (nr.binary.length - 20) + " more" : ""));
+    for(i = 0; i < nr.tooLarge.length; i++) out.push("Not read, larger than the size limit: " + nr.tooLarge[i].path + " (" + nr.tooLarge[i].bytes + " bytes)");
+    for(i = 0; i < nr.unreadable.length; i++) out.push("Not read, could not open: " + nr.unreadable[i]);
+    for(i = 0; i < nr.links.length; i++) out.push("Not read, a link to somewhere else (not followed): " + nr.links[i]);
+    if(skipped){
+      var parts = []; for(k in nr.skippedDir) parts.push(k + " " + nr.skippedDir[k]);
+      out.push("Not read, inside skipped folders (" + skipped + " file" + (skipped === 1 ? "" : "s") + ": " + parts.join(", ") + "). Include them if you will share them.");
+    }
+    return out.join("\n") + "\n";
+  }
+
+  function receipt(rep){
+    var E = rep.engine, counts = {}, sorted = {}, i, k;
+    for(i = 0; i < rep.findings.length; i++){ k = rep.findings[i].category; counts[k] = (counts[k] || 0) + 1; }
+    Object.keys(counts).sort().forEach(function(c){ sorted[c] = counts[c]; });
+    var d = rep.digests.slice().sort();
+    var r = {
+      receipt: "GeodeCode folder scan v1",
+      tool: { name: E.APP.name, version: E.APP.version },
+      ruleset: { name: E.RULESET.name, version: E.RULESET.version, digest: "sha256:" + E.sha256hex(E.rulesetDescriptor()) },
+      tree: { files_read: rep.filesRead, sha256: rep.noDigest ? "not available: this browser cannot hash files" : "sha256:" + E.sha256hex(d.join("\n")) },
+      not_read: { binary: rep.notRead.binary.length, too_large: rep.notRead.tooLarge.length, unreadable: rep.notRead.unreadable.length, links: rep.notRead.links.length, in_skipped_folders: countSkippedDirs(rep) },
+      found: { total: rep.findings.length, by_kind: sorted },
+      lines_too_long_for_pattern_rules: rep.longLines.length,
+      proves: "which files were read and what the rules found in them, without saying where; not when, and not that anything is safe"
+    };
+    return { receipt: r, text: JSON.stringify(r, null, 2) + "\n" };
+  }
+
+  var API = { DEFAULTS: DEFAULTS, normPath: normPath, skippedDirOf: skippedDirOf, isBinary: isBinary, decode: decode,
+    maskValue: maskValue, newReport: newReport, addFile: addFile, finish: finish, formatReport: formatReport, receipt: receipt };
+  globalThis.GEODECODE_FOLDER = API;
+  if(typeof module !== "undefined" && module.exports){ module.exports = API; }
 })();
 
 </script>
@@ -1221,9 +1344,73 @@ footer a{color:var(--muted)}
     });
   });
 
+  var FS=globalThis.GEODECODE_FOLDER, folderRep=null;
+  function hex(buf){ var b=new Uint8Array(buf), s="", i; for(i=0;i<b.length;i++) s+=(b[i]<16?"0":"")+b[i].toString(16); return s; }
+  function digestOf(bytes){
+    if(!(globalThis.crypto && crypto.subtle && crypto.subtle.digest)) return Promise.resolve(null);
+    return crypto.subtle.digest("SHA-256", bytes).then(hex, function(){ return null; });
+  }
+  function relPathOf(f){
+    var p=(f.webkitRelativePath||f.name).replace(/\\/g,"/"), k=p.indexOf("/");
+    return { top: k>0 ? p.slice(0,k) : "", rel: k>0 ? p.slice(k+1) : p };
+  }
+  function renderFolder(){
+    var rep=folderRep, show=$("folderShow").checked, body=$("folderBody"), notes=$("folderNotes");
+    if(!rep) return;
+    body.innerHTML=""; notes.innerHTML="";
+    rep.findings.forEach(function(f){
+      var tr=document.createElement("tr");
+      tr.innerHTML="<td class='val'>"+esc(f.path)+"</td><td>"+f.line+"</td><td><span class='tag'>"+esc(f.label)+"</span></td><td class='val'>"+esc(show?f.value:FS.maskValue(f.value))+"</td>";
+      body.appendChild(tr);
+    });
+    $("folderTable").style.display = rep.findings.length ? "table" : "none";
+    var lines=FS.formatReport(rep,{showValues:show, title:rep.title}).split("\n").filter(function(l){ return /^(Not read|Lines too long)/.test(l); });
+    lines.forEach(function(l){ var li=document.createElement("li"); li.textContent=l; notes.appendChild(li); });
+    $("folderWrap").style.display = (rep.findings.length || lines.length) ? "block" : "none";
+    $("folderReport").value = FS.formatReport(rep,{showValues:show, title:rep.title});
+    $("folderReceipt").value = FS.receipt(rep).text;
+    $("folderReportD").style.display="block"; $("folderReceiptD").style.display="block";
+  }
+  $("folderInput").addEventListener("change", function(){
+    var input=this, files=Array.prototype.slice.call(input.files||[]);
+    if(!files.length) return;
+    var rep=FS.newReport(E, $("folderDeps").checked ? {skipDirs:[]} : {}), i=0, top="";
+    folderRep=null;
+    $("folderStat").textContent="Reading "+files.length+" file"+(files.length===1?"":"s")+"\u2026";
+    function next(){
+      var f, rp;
+      for(;;){
+        if(i>=files.length) break;
+        f=files[i]; rp=relPathOf(f);
+        if(!top) top=rp.top;
+        if(FS.skippedDirOf(rp.rel, rep.options)){ FS.addFile(rep, rp.rel, null); i++; continue; }
+        if(f.size > rep.options.maxBytes){ FS.addFile(rep, rp.rel, null, "tooLarge", f.size); i++; continue; }
+        break;
+      }
+      if(i>=files.length){
+        FS.finish(rep); rep.title=top||"the folder"; folderRep=rep;
+        $("folderStat").innerHTML = rep.clean
+          ? "<b>0</b> found in "+rep.filesRead+" file"+(rep.filesRead===1?"":"s")+" read. The rules flag nothing there; that is a floor, not a guarantee."
+          : "<b>"+rep.findings.length+"</b> found in "+rep.filesWithFindings+" file"+(rep.filesWithFindings===1?"":"s")+", out of "+rep.filesRead+" read.";
+        renderFolder(); input.value=""; return;
+      }
+      i++;
+      if(i%200===0) $("folderStat").textContent="Reading "+i+" of "+files.length+"\u2026";
+      f.arrayBuffer().then(function(buf){
+        var bytes=new Uint8Array(buf);
+        return digestOf(bytes).then(function(d){ FS.addFile(rep, rp.rel, bytes, null, bytes.length, d); });
+      }).then(next, function(){ FS.addFile(rep, rp.rel, null, "unreadable"); next(); });
+    }
+    next();
+  });
+  $("folderShow").addEventListener("change", renderFolder);
+  $("folderCopy").addEventListener("click", function(){ copyFrom("folderReport","folderCopyStat"); });
+  $("folderReceiptCopy").addEventListener("click", function(){ copyFrom("folderReceipt","folderReceiptStat"); });
+
   $("rsver").textContent = "Rule pack "+E.RULESET.name+" "+E.RULESET.version+".";
   window.__geodeBooted = true;
 })();
+
 </script>
 <script>
 (function(){
@@ -1238,6 +1425,7 @@ footer a{color:var(--muted)}
     if(m){ m.insertBefore(p, m.firstChild); } else { document.body.appendChild(p); }
   }, 2500);
 })();
+
 </script>
 </body>
 </html>
