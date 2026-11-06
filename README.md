@@ -9,7 +9,7 @@ GeodeCode removes what you tell it to remove — tokens, keys, emails, internal 
 - **Online** — open [geodeforge.com/geodecode](https://geodeforge.com/geodecode/).
 - **Offline** — download `index.html` and open it in any browser. It is one self-contained file: no install, no build, no network.
 
-Paste your text, choose or type what to strip, and copy the cleaned result. The panel lists every change, so you can check it before it goes anywhere.
+Paste your text, choose or type what to strip, and copy the cleaned result. To add people from your contacts, choose **Add names from a contacts file** and pick a contacts file (.vcf) or a spreadsheet saved as CSV. Their names, emails, phone numbers, companies and street addresses go on your list, and each family name can go on by itself too, so "Mr Roe" is found as well as "Jane Roe". The file is read in your browser; notes, birthdays and photos are not read. The panel lists every change, so you can check it before it goes anywhere.
 
 ## Scan a whole folder
 
