@@ -20,9 +20,9 @@
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Is anything uploaded when I clean my code or text?", "acceptedAnswer": {"@type": "Answer", "text": "No. Everything runs in JavaScript inside your own browser tab and nothing leaves your device. You can check: open your browser's developer tools, watch the Network tab, and run a clean — no request carries your text anywhere."}}, {"@type": "Question", "name": "What counts as a secret in my code?", "acceptedAnswer": {"@type": "Answer", "text": "API keys, tokens, connection strings, JWTs, private keys, passwords, and internal hostnames. You list what to remove; GeodeCode strips those and flags other things that look sensitive so you can decide."}}, {"@type": "Question", "name": "Can GeodeCode check a whole folder for secrets?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Choose a folder and it reads every file in your browser and lists each file and line that looks like a key, token or password. Binary files are listed but not read. The command-line version, scan-folder.mjs, does the same and fails when it finds something, so it can stop a push."}}, {"@type": "Question", "name": "I already pasted a key into an AI chat — is it compromised?", "acceptedAnswer": {"@type": "Answer", "text": "Treat it as compromised: rotate or revoke that key now. Then clean code before you paste it next time, so the secret never rides along."}}, {"@type": "Question", "name": "Can I clean text without uploading it anywhere?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. That is the whole design: the work happens on your device, the page makes no third-party requests, and a re-runnable receipt shows exactly what was changed."}}]}</script>
 <style>
 :root{
-  --ink:#e2b057; --gem:#ffffff; --text:#ffffff; --muted:#cdc6dc;
+  --ink:#e8bd6c; --gem:#ffffff; --text:#ffffff; --muted:#cdc6dc;
   --line:#a7b9d3; --bg:#06070c; --card:#2d5086; --ok:#8fdec2; --warn:#E8C07A; --bad:#F09AA0;
-  --btn:#0f9982; --way:#e2b057;
+  --btn:#0c8370; --way:#e8bd6c;
   --sans: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue","Noto Sans","Noto Sans SC","Noto Sans Arabic","Noto Sans Devanagari",Arial,sans-serif;
   --mono: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
 }
@@ -88,13 +88,13 @@ table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:4px}
 th,td{text-align:start;padding:5px 9px;border-bottom:1px solid #45659c;vertical-align:top}
 th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
 td.val,td.tok{font-family:var(--mono);font-size:11.5px;word-break:break-all}
-.tag{display:inline-block;font-family:var(--mono);font-size:11px;padding:1px 8px;border-radius:999px;background:rgba(226,176,87,.16);color:var(--ink);font-weight:600}
+.tag{display:inline-block;font-family:var(--mono);font-size:11px;padding:1px 8px;border-radius:999px;background:rgba(6,7,12,.25);color:var(--ink);font-weight:600}
 .tier{color:var(--muted);font-size:11px}
 .empty{color:var(--muted);font-size:13px;padding:6px 0}
 .duo{display:grid;grid-template-columns:1fr 1fr;gap:18px;padding:30px 0;border-bottom:1px solid var(--line)}
 @media(max-width:820px){.duo{grid-template-columns:1fr}}
 .duo details{margin-top:0}
-.distill{background:rgba(232,192,122,.10);border:1px solid #6a5a34;border-radius:12px;padding:13px 15px;margin-top:12px}
+.distill{background:rgba(6,7,12,.25);border:1px solid #6a5a34;border-radius:12px;padding:13px 15px;margin-top:12px}
 .distill label{display:flex;align-items:flex-start;gap:9px;cursor:pointer}
 .distill input[type=checkbox]{margin-top:3px}
 .distill .hint{margin:4px 0 0}
