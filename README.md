@@ -2,7 +2,7 @@
 
 Clean code and text before you paste it — strips what you list and proves it, all in your browser.
 
-GeodeCode removes what you tell it to remove — tokens, keys, emails, internal hostnames, anything you name — from any code or text you paste, and shows you exactly what it took out. It also flags other things that look sensitive, so you can decide. Everything happens on your device; nothing is uploaded.
+GeodeCode removes what you tell it to remove — tokens, keys, emails, internal hostnames, anything you name — from any code or text you paste, and shows you exactly what it took out. It also finds what you listed when it is written another way: different capitals or accents, hidden characters, encoded spaces such as %20, a phone number in another format, or tucked inside base64. It flags other things that look sensitive, so you can decide. Everything happens on your device; nothing is uploaded.
 
 ## Use it
 
